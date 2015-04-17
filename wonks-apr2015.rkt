@@ -2,28 +2,31 @@
 (require slideshow/code)
 
 ;; title slide
-(slide #:title "" 
-       (t "Enriching Typed Racket with Dependent Types")
-       (t "Overview and Status Report"))
+(slide
+       (bt "Enriching Typed Racket with Dependent Types")
+       (t "Overview and Status Report")
+       (it "Andrew M. Kent"))
 
 ;; how is this novel?
-(slide (item "We are extending Typed Racket to include refinements"
-             "and integer linear constraints")
+(slide #:title "The Big Picture"
+       'next
+       'alts
+       (list (list (item "Typed Racket"))
+             (list (item "Typed Racket + refinement types"))
+             (list (item "Typed Racket + refinement types + linear integer constraints")))
        'next
        (item (it "Q:  Haven't those things been done before?"))
        'next
-       (item "Refinements and integer constraints? Absolutely!")
+       (item "Individually? Absolutely!")
        'next
-       (item (it "Q:  So.. what's novel?"))
+       (subitem (bt "sound interoperation") "with full featured dynamically typed language")
        'next
-       (subitem "Expressive, practical feature set +" 
-                (it "sound interoperation") "with full" 
-                "featured dynamically typed language")
-       'next
-       (subitem "Refinements + unique type system used by" 
-                "Typed Racket and Typed Clojure" 
-                (it "(Logical Types for Untyped Languages, ") 
-                (it "Tobin-Hochstadt & Felleisen, ICFP 2010)")))
+       (subitem (bt "unique type system") "successfully used by Typed Racket and Typed Clojure") 
+       'next 
+       'alts
+       (list (list (subitem "no dependence on SMT solver"))
+             (list (subitem "no dependence on SMT solver" 
+                            (it "(more traditional type system)")))))
 
 ;; refresher
 (slide #:title "Already Logical Types" 
@@ -51,13 +54,12 @@
                                         (fx+ n 1)
                                         (fl+ n 1.0)))))
                    'next
-                   (subitem (code n) "starts off as" (it "either") 
+                   (subitem (code n) "is" (it "either") 
                             "a" (code Fixnum) "or a" (code Flonum))
                    'next
-                   (subitem "We need to reason about the conditional test"
-                            (code (fixnum? n)))))
+                   (subitem "What does" (code (fixnum? n)) "tell us?")))
        'next
-       (item "Answer: By using" (bt "logical propositions") " about types!"))
+       (item "Answer: We need" (bt "logical propositions") " about types!"))
 
 
 ;; Walk through logical propositions on plus1
@@ -73,14 +75,18 @@
                          (it "or") (code (n -: Float))))
              (list (item "Assume" (code (n -: (U Fixnum Float))))))
        'next
-       (item "In the" (bt "then branch") (code (n -: Fixnum)))
+       'alts
+       (list (list (item (bt "then branch") "...?"))
+             (list (item (bt "then branch") (code (n -: Fixnum)))))
        'next
        (subitem (code (fx+ n 1)) "typechecks!")
        'next
-       (item "In the" (bt "else branch") (code (n -! Fixnum)))
-       'next
-       (subitem "combined with" (code (n -: (U Fixnum Float))) 
-                "implies" (code (n -: Float)))
+       'alts
+       (list (list (item (bt "else branch") "...?"))
+             (list (item (bt "else branch") (code (n -! Fixnum))))
+             (list (item (bt "else branch") 
+                         (code (n -! Fixnum))
+                         (code ⇒ (n -: Float)))))
        'next
        (subitem (code (fl+ n 1.0)) "typechecks!"))
 
@@ -100,8 +106,8 @@
                    'next
                    (subitem (code (Γ ⊢ (fixnum? n) 
                                      : Boolean 
-                                     \; (n -: Fixnum) when not #f
-                                     \; (n -! Fixnum) when #f
+                                     \; when not #f => (n -: Fixnum) 
+                                     \; when #f     => (n -! Fixnum)
                                      \; ∅)))))
        'next
        (item "Typed Racket uses logical propositions as part" 
@@ -151,15 +157,30 @@
                                           (if (fixnum? x)
                                               (fx* x y)
                                               42))))))
-                    (list (item "... but how" (it "is") (code dependent-case->) "implemented?")
-                          'next)))))
+                    (list (item "... but how" (it "is") (code dependent-case->) "implemented?"))))
+        (list (item "Best")
+              (code (dependent-case-> 
+                     [Fixnum -> Fixnum]
+                     [Float -> Float]))
+              'alts
+              (list (list (item "expands to:")
+                          (code [([x : (U Fixnum Float)])
+                                 -> 
+                                 (Refine [ret : (U Fixnum Float)]
+                                         (or (and [x   -: Fixnum]
+                                                  [ret -: Fixnum])
+                                             (and [x   -: Float]
+                                                  [ret -: Float])))]))
+                    (list (item "refinement types = more precise types!")
+                          (code [([x : (U Fixnum Float)])
+                                 -> 
+                                 (Refine [ret : (U Fixnum Float)]
+                                         (or (and [x   -: Fixnum]
+                                                  [ret -: Fixnum])
+                                             (and [x   -: Float]
+                                                  [ret -: Float])))]))))))
 
 (slide #:title "More Descriptive Types"
-       (code (dependent-case-> 
-              [Fixnum -> Fixnum]
-              [Float -> Float]))
-       'next
-       (item "Is just syntactic sugar for this:")
        (code [([x : (U Fixnum Float)])
               -> 
               (Refine [ret : (U Fixnum Float)]
@@ -167,12 +188,23 @@
                                [ret -: Fixnum])
                           (and [x   -: Float]
                                [ret -: Float])))])
+       (item "Sound interoperability?")
        'next
-       (item "By adding" (bt "logical refinement types")
-             "we can more precisely specify types!"))
+       'alts
+       (list (list 'alts
+                   (list (list (subitem "with typed code? "))
+                         (list (subitem "with typed code? Typechecker!")))
+                   'next
+                   'alts
+                   (list (list (subitem "with untyped code?"))
+                         (list (subitem "with untyped code? Contracts!"))))
+             (list (code (->i ([x (or/c fixnum? flonum?)])
+                              [ret (x) (if (fixnum? x) fixnum? flonum?)])))))
 
 (slide #:title "More Descriptive Types"
-       (item "Another example (from Q on #racket last night)")
+       'alts
+       (list (list (item "Another example"))
+             (list (item "#racket: prevent flonum divide-by-zero error")))
        'next
        (item "Assume" (code (denom -: Float)) 
              "and" (code (ε -: Positive-Float)))
@@ -182,8 +214,7 @@
                 <division-exp>]
                ...))
        'next
-       (item "In" (code <division-exp>) (it "we") "know" 
-             (code denom) "is non-zero, but" 
+       (item "In" (code <division-exp>) "we know" (code denom ≠ 0) ", but" 
              "currently in TR this fact is lost")
        'next
        (item "With a dependent refinement in the range of" 
@@ -210,7 +241,7 @@
 (slide #:title "Linear Integer Constraints"
        (item "Types can depend on other types...")
        'next
-       (item "are there other practical, decidable theories we want to reason about?")
+       (item "What about other practical, decidable theories?")
        'next
        (item (bt "Linear integer constraints") "are a well" 
              "understood, decidable problem w/ numerous applications!"))
@@ -275,4 +306,7 @@
        'next
        (item "Support arbitrary pure predicates in refinements")
        'next
-       (t "Thanks!"))
+       (t "Thanks!")
+       (item "PLT Redex model available:" (tt "https://github.com/andmkent/stop2015-redex"))
+       (item "Typed Racket fork:" (tt "https://github.com/andmkent/typed-racket"))
+       (subitem "Warning: work in progress =)"))
