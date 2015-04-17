@@ -2,8 +2,7 @@
 (require slideshow/code)
 
 ;; title slide
-(slide
-       (bt "Enriching Typed Racket with Dependent Types")
+(slide (bt "Enriching Typed Racket with Dependent Types")
        (t "Overview and Status Report")
        (it "Andrew M. Kent"))
 
@@ -137,14 +136,19 @@
                             [(U Fixnum Float) 
                              -> (U Fixnum Float)]))
               'next
-              (item "But we don't want to forget the relation between input and output types")
-              'next
-              (item "e.g. we want this to typecheck:" 
+              (item "But we don't want to forget the relation between input and output types!"))
+        (list (item "e.g. we want this to typecheck:" 
                     (code (define (foo [x : (U Fixnum Float)]) : Fixnum
                             (let ([y (plus1 x)])
                               (if (fixnum? x)
                                   (fx* x y)
-                                  42))))))
+                                  42)))))
+              'next
+              (item "current type of" (code plus1) ":")
+              (code (case-> [Fixnum -> Fixnum]
+                            [Float -> Float]
+                            [(U Fixnum Float) 
+                             -> (U Fixnum Float)])))
         (list (item "Best")
               (code (dependent-case-> 
                      [Fixnum -> Fixnum]
@@ -217,22 +221,11 @@
        (item "In" (code <division-exp>) "we know" (code denom ≠ 0) ", but" 
              "currently in TR this fact is lost")
        'next
-       (item "With a dependent refinement in the range of" 
-             (code flabs) "we could track this properly!"))
-
-(slide #:title "More Descriptive Types"
-       (item "Refinements are a great, natural extension to Typed Racket!")
+       'alts
+       (list (list (item (code (flabs denom)) "types at" (code Fixnum) "currently"))
+             (list (item "With a dependent refinement we could more accurately track these types!")))
        'next
-       (subitem "Relate the types of runtime values!")
-       'next
-       (subitem "Create expressive dependent functions!")
-       'next
-       (subitem "The logical propositions are already" 
-                "part of the type system!")
-       'next
-       (subitem "Refinements are easily mapped to dependent contracts")
-       'next
-       (subitem "Implemented and working! In my development fork..."))
+       (subitem "Just like" (code plus1) "using" (code dependent-case->) "to better track types"))
 
 
 (slide #:title "Linear Integer Constraints"
@@ -262,18 +255,16 @@
                    (item "The optimizer can replace" (code vector-ref)
                          "with" (code unsafe-vector-ref) ":")
                    'next
-                   (code (define (norm [v : (Vectorof Real)])
-                           (sqrt (for/sum ([i (vec-len v)])
-                                   (square (unsafe-vector-ref v i)))))))))
+                   (item "This requires no intervention from the user!"))))
 
 (slide #:title "Linear Integer Constraints"
-       (code (: save-vec-ref 
+       (code (: safe-vector-ref 
                 (All (α) (([v : (Vectorof α)]
                            [i : Natural (< i (vec-len v))])
                           -> α)))
-             (define safe-vec-ref unsafe-vector-ref))
+             (define safe-vector-ref vector-ref))
        'next
-       (item "Guaranteed safe usages of functions like" (code unsafe-vector-ref))
+       (item "Users can specifically require statically guaranteed safe usages of functions like" (code vector-ref))
        'next
        (item (code safe-vector-ref) "can never have a runtime out-of-bounds error!"))
 
@@ -283,8 +274,8 @@
                                       (= (vec-len v1)
                                          (vec-len v2))])
                (for/sum ([i (vec-len v1)])
-                 (* (safe-vec-ref v1 i)
-                    (safe-vec-ref v2 i)))))
+                 (* (safe-vector-ref v1 i)
+                    (safe-vector-ref v2 i)))))
        'next
        (item "No bounds errors + verified optimizations!"))
 
@@ -296,6 +287,21 @@
                                   (= m (+ 1 n))]]
               [Float -> Float])))
 
+
+(slide #:title "Recap"
+       (item "Refinements are a great, natural extension to Typed Racket!")
+       'next
+       (subitem "Relate the types of runtime values and reason about common integer constraints!")
+       'next
+       (subitem "Create expressive dependent functions!")
+       'next
+       (subitem "The logical propositions are already" 
+                "part of the type system!")
+       'next
+       (subitem "Refinements are easily mapped to dependent contracts")
+       'next
+       (subitem "Small/medium scale implemented and working! (Currently scaling to full scale...)"))
+
 (slide #:title "To Do"
        (t "Next Steps?"))
 
@@ -304,9 +310,9 @@
        'next
        (item "Experiment w/ new types for standard library")
        'next
-       (item "Support arbitrary pure predicates in refinements")
+       (item "Support arbitrary" (it "pure") "predicates in refinements")
        'next
        (t "Thanks!")
        (item "PLT Redex model available:" (tt "https://github.com/andmkent/stop2015-redex"))
        (item "Typed Racket fork:" (tt "https://github.com/andmkent/typed-racket"))
-       (subitem "Warning: work in progress =)"))
+       (subitem "Work in progress!  =)"))
