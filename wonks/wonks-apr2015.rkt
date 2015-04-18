@@ -4,7 +4,8 @@
 ;; title slide
 (slide (bt "Enriching Typed Racket with Dependent Types")
        (t "Overview and Status Report")
-       (it "Andrew M. Kent and Sam Tobin-Hochstadt"))
+       (it "Andrew M. Kent and Sam Tobin-Hochstadt")
+       (text "Presented at PL Wonks @ Indiana University, 17 Apr 2015" '()  12))
 
 ;; how is this novel?
 (slide #:title "The Big Picture"
